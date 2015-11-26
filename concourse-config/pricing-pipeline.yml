@@ -1,0 +1,51 @@
+---
+jobs:  
+- name: unit tests
+  public: true
+  plan:
+  - get: git-pricing
+    trigger: true
+  - task: bundle
+    file: git-pricing/concourse/task_bundle.yml
+  - task: unit tests
+    file: git-pricing/concourse/task_unit.yml
+
+- name: deploy test env
+  public: true
+  serial: true
+  plan:
+  - get: git-pricing
+    trigger: true
+    passed: ['unit tests']
+
+  - task: bundle
+    file: git-pricing/concourse/task_bundle.yml
+
+  - task: functional tests
+    file: git-pricing/concourse/task_functional_tests.yml
+    config:
+      params:
+        CF_USERNAME: {{cf_username}}
+        CF_PASSWORD: {{cf_password}}
+
+  - put: bosh-lites
+    params:
+      add: bosh-lite-lock
+
+
+resources:  
+- name: git-pricing
+  type: git
+  source:
+    uri: https://github.com/moredip/pretend_pricing_service.git
+    branch: concourse
+    check_every: 10s
+    private_key: {{github_deploy_key}}
+
+- name: test-environments
+  type: pool
+  source:
+    uri: git@github.com:moredip/concourse-build.git
+    branch: locks
+    pool: test-env
+    private_key: {{github_deploy_key}}

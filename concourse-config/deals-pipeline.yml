@@ -1,6 +1,6 @@
 ---
 jobs:  
-- name: unit test
+- name: unit tests
   public: true
   plan:
   - get: git-deals
@@ -16,8 +16,17 @@ jobs:
   plan:
   - get: git-deals
     trigger: true
-  - task: deploy
-    file: git-deals/concourse/task_deploy_staging.yml
+    passed: ['unit tests']
+  - task: bundle
+    file: git-deals/concourse/task_bundle.yml
+  - task: deploy to test space
+    file: git-deals/concourse/task_deploy_test.yml
+    config:
+      params:
+        CF_SPACE: test
+        CF_USERNAME: {{cf_username}}
+        CF_PASSWORD: {{cf_password}}
+
 
 resources:  
 - name: git-deals
