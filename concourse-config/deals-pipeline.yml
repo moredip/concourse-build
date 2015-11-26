@@ -1,0 +1,28 @@
+---
+jobs:  
+- name: unit test
+  public: true
+  plan:
+  - get: git-deals
+    trigger: true
+  - task: bundle
+    file: git-deals/concourse/task_bundle.yml
+  - task: unit tests
+    file: git-deals/concourse/task_unit.yml
+
+- name: functional tests
+  public: true
+  serial: true
+  plan:
+  - get: git-deals
+    trigger: true
+  - task: deploy
+    file: git-deals/concourse/task_deploy_staging.yml
+
+resources:  
+- name: git-deals
+  type: git
+  source:
+    uri: https://github.com/moredip/pretend_deals_service.git
+    branch: concourse
+    check_every: 10s
