@@ -21,16 +21,45 @@ jobs:
   - task: bundle
     file: git-pricing/concourse/task_bundle.yml
 
-  - task: functional tests
-    file: git-pricing/concourse/task_functional_tests.yml
+  - task: deploy
+    file: git-pricing/concourse/task_deploy.yml
     config:
       params:
         CF_USERNAME: {{cf_username}}
         CF_PASSWORD: {{cf_password}}
 
-  - put: bosh-lites
+  - put: test-environments
     params:
-      add: bosh-lite-lock
+      add: deploy/concourse_pool
+  - put: test-environments
+    params:
+      claim: cf-test-env
+
+- name: test against env
+  plan:
+  - get: test-environments
+    trigger: true
+    passed: [deploy test env]
+  - get: git-pricing
+    passed: [deploy test env]
+
+  - task: bundle
+    file: git-pricing/concourse/task_bundle.yml
+
+  - task: functional tests
+    file: git-pricing/concourse/task_functional_tests.yml
+    ensure:
+      do:
+        - task: teardown disposable stack
+          file: git-pricing/concourse/task_teardown.yml
+          config:
+            params:
+              CF_USERNAME: {{cf_username}}
+              CF_PASSWORD: {{cf_password}}
+
+        - put: test-environments
+          params: {remove: test-environments}
+
 
 
 resources:  
